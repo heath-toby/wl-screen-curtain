@@ -12,7 +12,7 @@ optdepends=(
     'speech-dispatcher: speech announcements via spd-say fallback'
 )
 source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('cd71ab4b379f68248cb44997da283f6b0d93deb68e147a8d96af8bd3e97edf6f')
 
 package() {
     cd "$pkgname-$pkgver"
