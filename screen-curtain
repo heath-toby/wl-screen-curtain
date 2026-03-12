@@ -1,0 +1,19 @@
+#!/bin/bash
+# Toggle the screen curtain overlay on/off.
+
+announce() {
+    # Try Orca first (uses its voice settings + braille), fall back to spd-say
+    gdbus call --session \
+        --dest org.gnome.Orca.Service \
+        --object-path /org/gnome/Orca/Service \
+        --method org.gnome.Orca.Service.PresentMessage \
+        "$1" 2>/dev/null || spd-say "$1" 2>/dev/null &
+}
+
+if pkill -f screen-curtain-overlay; then
+    announce "Screen curtain off"
+else
+    screen-curtain-overlay &
+    disown
+    announce "Screen curtain on"
+fi

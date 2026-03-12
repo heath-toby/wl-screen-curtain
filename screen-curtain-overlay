@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""Screen curtain overlay — covers all outputs with an opaque black surface."""
+
+import signal
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("GtkLayerShell", "0.1")
+from gi.repository import Gtk, Gdk, GtkLayerShell
+
+
+def make_overlay(monitor=None):
+    win = Gtk.Window()
+
+    GtkLayerShell.init_for_window(win)
+    GtkLayerShell.set_layer(win, GtkLayerShell.Layer.OVERLAY)
+    GtkLayerShell.set_exclusive_zone(win, -1)
+    GtkLayerShell.set_keyboard_mode(
+        win, GtkLayerShell.KeyboardMode.NONE
+    )
+
+    # Anchor to all edges so it fills the entire output
+    for edge in (
+        GtkLayerShell.Edge.TOP,
+        GtkLayerShell.Edge.BOTTOM,
+        GtkLayerShell.Edge.LEFT,
+        GtkLayerShell.Edge.RIGHT,
+    ):
+        GtkLayerShell.set_anchor(win, edge, True)
+        GtkLayerShell.set_margin(win, edge, 0)
+
+    if monitor is not None:
+        GtkLayerShell.set_monitor(win, monitor)
+
+    # Paint it black
+    css = Gtk.CssProvider()
+    css.load_from_data(b"window { background-color: black; }")
+    win.get_style_context().add_provider(
+        css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+    )
+
+    win.show_all()
+    return win
+
+
+def main():
+    # Clean exit on SIGTERM/SIGINT
+    signal.signal(signal.SIGTERM, lambda *_: Gtk.main_quit())
+    signal.signal(signal.SIGINT, lambda *_: Gtk.main_quit())
+
+    display = Gdk.Display.get_default()
+    windows = []
+
+    # Create an overlay on every monitor
+    for i in range(display.get_n_monitors()):
+        monitor = display.get_monitor(i)
+        windows.append(make_overlay(monitor))
+
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    main()
