@@ -2,6 +2,7 @@
 """Screen curtain overlay — covers all outputs with an opaque black surface."""
 
 import signal
+import cairo
 import gi
 
 gi.require_version("Gtk", "3.0")
@@ -9,8 +10,39 @@ gi.require_version("GtkLayerShell", "0.1")
 from gi.repository import Gtk, Gdk, GtkLayerShell
 
 
+def on_draw(widget, cr):
+    """Paint solid black and nothing else."""
+    cr.set_source_rgb(0, 0, 0)
+    cr.set_operator(cairo.OPERATOR_SOURCE)
+    cr.paint()
+    return True
+
+
+def on_realize(widget):
+    """Mark the entire surface as opaque so the compositor skips rendering below."""
+    gdk_window = widget.get_window()
+    rect = gdk_window.get_geometry()
+    region = cairo.Region(cairo.RectangleInt(0, 0, rect.width, rect.height))
+    gdk_window.set_opaque_region(region)
+
+
+def on_configure(widget, event):
+    """Update opaque region when the window is resized."""
+    gdk_window = widget.get_window()
+    if gdk_window:
+        region = cairo.Region(cairo.RectangleInt(0, 0, event.width, event.height))
+        gdk_window.set_opaque_region(region)
+    return False
+
+
 def make_overlay(monitor=None):
     win = Gtk.Window()
+
+    # Use app-paintable to bypass GTK theme rendering entirely
+    win.set_app_paintable(True)
+    win.connect("draw", on_draw)
+    win.connect("realize", on_realize)
+    win.connect("configure-event", on_configure)
 
     GtkLayerShell.init_for_window(win)
     GtkLayerShell.set_layer(win, GtkLayerShell.Layer.OVERLAY)
@@ -31,13 +63,6 @@ def make_overlay(monitor=None):
 
     if monitor is not None:
         GtkLayerShell.set_monitor(win, monitor)
-
-    # Paint it black
-    css = Gtk.CssProvider()
-    css.load_from_data(b"window { background-color: black; }")
-    win.get_style_context().add_provider(
-        css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-    )
 
     win.show_all()
     return win
